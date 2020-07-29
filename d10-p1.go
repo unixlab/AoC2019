@@ -10,7 +10,7 @@ import (
 
 var (
 	cords []cord
-	grid  [10][10]bool
+	grid  [25][25]bool
 )
 
 type cord struct {
@@ -56,57 +56,29 @@ func checkInColumn(y int, x int) int {
 	return counter
 }
 
-func checkLos(y1 int, x1 int, y2 int, x2 int) bool {
-	var xRatio, yRatio, xStep, yStep, xCur, yCur float64
-	epsilon := 1e-5
-	angle := getAngle(y1, x1, y2, x2)
-	yRatio = angle / 90
-	xRatio = (90 - angle) / 90
-	xStep = 1 * xRatio
-	yStep = 1 * yRatio
-
-	done := getDistance(y1, x1, y2, x2)
-	for {
-		done -= xStep
-		done -= yStep
-		if done < epsilon {
-			break
-		}
-		xCur += xStep
-		yCur += yStep
-		_, xFrac := math.Modf(xCur)
-		_, yFrac := math.Modf(yCur)
-		if (xFrac < epsilon || xFrac > 1.0-epsilon) && (yFrac < epsilon || yFrac > 1.0-epsilon) {
-			var posY, posX int
-			if y1 > y2 {
-				posY = y1 - int(math.Round(yCur))
-			} else {
-				posY = y1 + int(math.Round(yCur))
-			}
-			if x1 > x2 {
-				posX = x1 - int(math.Round(xCur))
-			} else {
-				posX = x1 + int(math.Round(xCur))
-			}
-			if grid[posY][posX] {
-				return false
-			}
-		}
-	}
-	return true
-}
-
 func getDistance(x1 int, y1 int, x2 int, y2 int) float64 {
 	return math.Abs(float64(x1)-float64(x2)) + math.Abs(float64(y1)-float64(y2))
 }
 
 func getAngle(y1 int, x1 int, y2 int, x2 int) float64 {
-	a := int2floatAbs(y1 - y2)
-	b := int2floatAbs(x1 - x2)
-	c := math.Sqrt(a*a + b*b)
-	alpha := math.Acos((b*b + c*c - a*a) / (2 * b * c))
-	degree := alpha * 180 / math.Pi
+	degree := 180 - (180 / math.Pi * math.Atan2(float64(x1-x2), float64(y1-y2)))
+
+	if x2 > x1 {
+		degree += 90
+	}
+	if y2 > y1 {
+		degree += 180
+	}
 	return degree
+}
+
+func appendIfNotExists(array []float64, element float64) []float64 {
+	for _, v := range array {
+		if v == element {
+			return array
+		}
+	}
+	return append(array, element)
 }
 
 func main() {
@@ -137,14 +109,15 @@ func main() {
 			if xV {
 				counter += checkInColumn(y, x)
 				counter += checkInRow(y, x)
+				var angles []float64
 				for _, cord := range cords {
 					if x == cord.X || y == cord.Y {
 						continue
 					}
-					if checkLos(y, x, cord.Y, cord.X) {
-						counter++
-					}
+					angle := getAngle(y, x, cord.Y, cord.X)
+					angles = appendIfNotExists(angles, angle)
 				}
+				counter += len(angles)
 			}
 			if counter > best {
 				best = counter
